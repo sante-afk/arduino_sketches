@@ -1,0 +1,56 @@
+#include <Stepper.h> 
+
+const int SENSOR_PIN = 2;     
+const int RELAY_PIN = 3;     
+const int MOTOR_IN1 = 8;
+const int MOTOR_IN2 = 9;
+const int MOTOR_IN3 = 10;
+const int MOTOR_IN4 = 11;
+
+const int STEPS_PER_REV = 2048; 
+Stepper myStepper(STEPS_PER_REV, MOTOR_IN1, MOTOR_IN3, MOTOR_IN2, MOTOR_IN4);
+int sensorState;         
+bool isActive = false;    
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 100; 
+
+void setup() {
+  Serial.begin(9600); 
+  Serial.println("The system is running. Waiting for your hand...");
+
+  pinMode(SENSOR_PIN, INPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  myStepper.setSpeed(12); 
+  digitalWrite(RELAY_PIN, HIGH);
+}
+
+void loop() {
+  int currentReading = digitalRead(SENSOR_PIN);
+  
+  if (currentReading != sensorState) {
+    lastDebounceTime = millis();
+    sensorState = currentReading;
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (sensorState == LOW && !isActive) {
+      Serial.println("Hand discovered!");
+      digitalWrite(RELAY_PIN, LOW);
+      Serial.println("The relay is on");
+      delay(300);
+      myStepper.step(STEPS_PER_REV); 
+      delay(500);
+      myStepper.step(-STEPS_PER_REV); 
+      digitalWrite(RELAY_PIN, HIGH);
+      Serial.println("The relay is off");
+      isActive = true;
+      Serial.println("Ready for the next approach.\n");
+      
+    } else if (sensorState == HIGH && isActive) {
+      Serial.println("The hand is removed. The system is ready for another operation.");
+      isActive = false;
+    }
+  }
+  
+  delay(10);
+}
